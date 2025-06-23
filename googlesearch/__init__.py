@@ -32,6 +32,43 @@ def _req(term, results, lang, start, proxies, timeout, safe, ssl_verify, region)
     resp.raise_for_status()
     return resp
 
+def _req_exclude_social(term, results, lang, start, proxies, timeout, safe, ssl_verify, region):
+
+    social_sites_string = social_sites_string = "-instagram.com " \
+    "-x.com -twitter.com -reddit.com " \
+    "-facebook.com -linkedin.com " \
+    "-tiktok.com -pinterest.com -tumblr.com " \
+    "-snapchat.com -threads.net -youtube.com -discord.com " \
+    "-quora.com -wechat.com -weibo.com -vk.com -telegram.org -line.me " \
+    "-mastodon.social -clubhouse.com -medium.com -vimeo.com -bilibili.com " \
+    "-flickr.com -mix.com -kooapp.com -peertube.org -gab.com -truthsocial.com"
+
+
+    resp = get(
+        url="https://www.google.com/search",
+        headers={
+            "User-Agent": get_useragent(),
+            "Accept": "*/*"
+        },
+        params={
+            "q": f"{term} {social_sites_string}",
+            "num": results + 2,  # Prevents multiple requests
+            "hl": lang,
+            "start": start,
+            "safe": safe,
+            "gl": region,
+        },
+        proxies=proxies,
+        timeout=timeout,
+        verify=ssl_verify,
+        cookies = {
+            'CONSENT': 'PENDING+987', # Bypasses the consent page
+            'SOCS': 'CAESHAgBEhIaAB',
+        }
+    )
+    resp.raise_for_status()
+    return resp
+
 
 class SearchResult:
     def __init__(self, url, title, description):
@@ -43,7 +80,7 @@ class SearchResult:
         return f"SearchResult(url={self.url}, title={self.title}, description={self.description})"
 
 
-def search(term, num_results=10, lang="en", proxy=None, advanced=False, sleep_interval=0, timeout=5, safe="active", ssl_verify=None, region=None, start_num=0, unique=False):
+def search(term, num_results=10, lang="en", proxy=None, advanced=False, sleep_interval=0, timeout=5, safe="active", ssl_verify=None, region=None, start_num=0, unique=False, exclude_social=False):
     """Search the Google search engine"""
 
     # Proxy setup
@@ -55,7 +92,11 @@ def search(term, num_results=10, lang="en", proxy=None, advanced=False, sleep_in
 
     while fetched_results < num_results:
         # Send request
-        resp = _req(term, num_results - start,
+        if exclude_social:
+            resp = _req_exclude_social(term, num_results - start,
+                    lang, start, proxies, timeout, safe, ssl_verify, region)
+        else:
+            resp = _req(term, num_results - start,
                     lang, start, proxies, timeout, safe, ssl_verify, region)
         
         # put in file - comment for debugging purpose
